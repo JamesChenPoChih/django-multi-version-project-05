@@ -30,8 +30,10 @@ environ.Env.read_env(BASE_DIR / '.env')  # 這一行是讀取你的 .env 檔案
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-dummy-for-build-only')
 DEBUG = env.bool('DEBUG', default=False)
 
-
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.onrender.com'])
+RENDER_EXTERNAL_HOSTNAME = env('RENDER_EXTERNAL_HOSTNAME', default=None)
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
