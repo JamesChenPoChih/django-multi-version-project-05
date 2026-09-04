@@ -13,3 +13,4 @@
 - 2025-0731- version `1.02` :加入登入時使用者名稱
 - 2025-0801- version `1.03` :美化購物車頁面  
 - 2025-1015- version `1.04` :成功部署 Render前端 + Neon後端資料庫
+- 2026-0903- version `1.05` :Added AI Agentic: LLM, RAG, MCP server
