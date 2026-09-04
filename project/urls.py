@@ -33,6 +33,7 @@ urlpatterns = [
     # App URLs
     path('cart/', include('cart.urls')),
     path('products/', include('products.urls')),
+    path('chatbot/', include('rag.urls')),
 ]
 
 if settings.DEBUG:

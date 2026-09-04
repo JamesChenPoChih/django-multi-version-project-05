@@ -1,7 +1,7 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.exceptions import ImmediateHttpResponse
 from django.shortcuts import redirect
-from login.models import UserProfile
+from django.contrib.auth.models import User
 
 class MySocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
@@ -18,26 +18,24 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter):
             return
 
         try:
-            # Case 1: An existing user is logging in.
-            profile = UserProfile.objects.get(email=user_email)
-            print(f"[MySocialAccountAdapter] Existing user found: {profile.email}")
-            # Log them in using our custom session logic.
+            # Case 1: An existing user is logging in. (改用 Django 內建 User 模型)
+            user = User.objects.get(email=user_email)
+            print(f"[MySocialAccountAdapter] Existing user found: {user.email}")
+            
             request.session['loginFlag'] = True
-            request.session['username'] = profile.username
+            request.session['username'] = user.username
 
-        except UserProfile.DoesNotExist:
-            # Case 2: A new user is signing up.
+        except User.DoesNotExist:
+            # Case 2: A new user is signing up. (改用 Django 內建 User 模型)
             print(f"[MySocialAccountAdapter] New user. Creating profile for: {user_email}")
-            # Use the full name from the social account, or the email as a fallback.
-            username = sociallogin.user.get_full_name() or user_email
-            # Create a new UserProfile instance for the new user.
-            new_profile = UserProfile.objects.create(
+            
+            username = sociallogin.user.get_full_name() or user_email.split('@')[0]
+            user = User.objects.create(
                 email=user_email,
-                username=username
+                username=user_email  # Django 的 username 必須唯一，這裡存入 email 避免重複
             )
-            # Log the new user in using our custom session logic.
             request.session['loginFlag'] = True
-            request.session['username'] = new_profile.username
+            request.session['username'] = username
 
         # In both cases, we have handled the login manually.
         # We raise ImmediateHttpResponse to stop allauth's default processing

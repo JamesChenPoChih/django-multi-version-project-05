@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}HackerMoose AI Chatbot{% endblock %}
+
+{% block css_content %}
+<style>
+  .chat-shell {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .chat-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .chat-window {
+    height: 55vh;
+    min-height: 360px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    padding: 1rem;
+  }
+
+  .chat-message {
+    max-width: 78%;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    margin-bottom: .75rem;
+    white-space: pre-wrap;
+  }
+
+  .chat-message.user {
+    margin-left: auto;
+    background: #000080;
+    color: #fff;
+  }
+
+  .chat-message.bot {
+    margin-right: auto;
+    background: #fff;
+    color: #212529;
+    border: 1px solid #e9ecef;
+  }
+
+  .source-list {
+    font-size: .85rem;
+    color: #6c757d;
+    margin-top: .5rem;
+  }
+
+  .chat-form {
+    display: flex;
+    gap: .75rem;
+    margin-top: 1rem;
+  }
+
+  .chat-form textarea {
+    resize: none;
+  }
+
+  @media (max-width: 576px) {
+    .chat-message {
+      max-width: 92%;
+    }
+
+    .chat-form {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-shell">
+  <div class="chat-header">
+    <h1 class="h3 mb-2">HackerMoose AI Chatbot</h1>
+    <p class="text-muted mb-0">Local RAG powered by a free self-hosted Nemotron model.</p>
+  </div>
+
+  <div id="chatWindow" class="chat-window" aria-live="polite">
+    <div class="chat-message bot">
+      Hello, I can answer questions using this site's products and local project data. Start the local Nemotron model first, then send a message.
+    </div>
+  </div>
+
+  <form id="chatForm" class="chat-form">
+    {% csrf_token %}
+    <textarea id="messageInput" class="form-control" rows="2" placeholder="Ask a question, for example: What products are available?"></textarea>
+    <button id="sendButton" class="btn btn-warning px-4" type="submit">Send</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block js_content %}
+<script>
+  const chatWindow = document.getElementById('chatWindow');
+  const chatForm = document.getElementById('chatForm');
+  const messageInput = document.getElementById('messageInput');
+  const sendButton = document.getElementById('sendButton');
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+  function addMessage(text, role, sources) {
+    const message = document.createElement('div');
+    message.className = `chat-message ${role}`;
+    message.textContent = text;
+
+    if (sources && sources.length) {
+      const sourceList = document.createElement('div');
+      sourceList.className = 'source-list';
+      sourceList.textContent = `Sources: ${sources.map(item => item.title || item.source).join(', ')}`;
+      message.appendChild(sourceList);
+    }
+
+    chatWindow.appendChild(message);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return message;
+  }
+
+  chatForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, 'user');
+    messageInput.value = '';
+    sendButton.disabled = true;
+    const loading = addMessage('Thinking...', 'bot');
+
+    try {
+      const response = await fetch('/chatbot/api/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json();
+      loading.remove();
+
+      if (!response.ok) {
+        addMessage(data.error || 'Request failed.', 'bot');
+      } else {
+        addMessage(data.answer, 'bot', data.sources);
+      }
+    } catch (error) {
+      loading.remove();
+      addMessage('Could not connect to the Django chatbot API.', 'bot');
+    } finally {
+      sendButton.disabled = false;
+      messageInput.focus();
+    }
+  });
+</script>
+{% endblock %}

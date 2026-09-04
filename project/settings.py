@@ -17,6 +17,12 @@ import os
 import environ
 import dj_database_url
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,7 +36,7 @@ environ.Env.read_env(BASE_DIR / '.env')  # 這一行是讀取你的 .env 檔案
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-dummy-for-build-only')
 DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.onrender.com'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.onrender.com', '127.0.0.1', 'localhost'])
 RENDER_EXTERNAL_HOSTNAME = env('RENDER_EXTERNAL_HOSTNAME', default=None)
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -61,6 +67,7 @@ INSTALLED_APPS = [
     # Add Cart - 2025-0727
     'cart',
     'products',
+    'rag',
 
     ## Add Social OAuth by ChatGPT
 
@@ -156,12 +163,34 @@ import dj_database_url
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 # If a DATABASE_URL environment variable is set, use it.
 # Otherwise, fall back to SQLite for local development.
-if 'DATABASE_URL' in os.environ:
+
+# 2025-1020 版本
+# if 'DATABASE_URL' in os.environ:
+#     DATABASES = {
+#         'default': dj_database_url.config(conn_max_age=600)
+#     }
+#     # Ensure SSL is required for PostgreSQL connections
+#     DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.config(conn_max_age=600)
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=0,
+            ssl_require=True,
+            conn_health_checks=True
+        )
     }
-    # Ensure SSL is required for PostgreSQL connections
-    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
+
 else:
     DATABASES = {
         'default': {
@@ -169,6 +198,39 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+
+
+# # 2025-1121主要資料庫導向Neon
+# if DATABASE_URL:
+#     DATABASES = {
+#         'default': dj_database_url.config(
+#             default=DATABASE_URL,
+#             conn_max_age=600,
+#             ssl_require=True
+#         )
+#     }
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+
+
+# 2025-1121備用: 資料庫JSON要輸出時使用
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+
+
+
+
 
 
 # Password validation
@@ -239,3 +301,12 @@ LOGGING = {
 # Stripe API Keys
 STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default=None)
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default=None)
+# Local free RAG / Nemotron settings.
+# Start a local OpenAI-compatible server with Ollama, llama.cpp, or vLLM.
+RAG_LLM_BASE_URL = env('RAG_LLM_BASE_URL', default='http://127.0.0.1:11434/v1')
+RAG_LLM_MODEL = env(
+    'RAG_LLM_MODEL',
+    default='hf.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF:Q4_K_M',
+)
+RAG_LLM_API_KEY = env('RAG_LLM_API_KEY', default='not-needed')
+RAG_LLM_TIMEOUT = env.int('RAG_LLM_TIMEOUT', default=60)
